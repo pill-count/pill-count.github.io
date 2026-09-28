@@ -529,8 +529,21 @@
         labelCell.textContent = rowName;
 
         if (Number.isNaN(daily) || daily < 0 || Number.isNaN(boxSize) || boxSize <= 0 || Number.isNaN(stock) || stock < 0) {
-          healthCell.innerHTML = `<span class="status warn">Needs input</span><div class="muted">Enter daily pills, box size, and stock.</div>`;
-          planCell.innerHTML = `<div class="muted">Planning updates automatically when the row is complete.</div>`;
+          const statusBadge = document.createElement("span");
+          const statusDetail = document.createElement("div");
+          const planLine = document.createElement("div");
+
+          healthCell.replaceChildren();
+          statusBadge.className = "status warn";
+          statusBadge.textContent = "Needs input";
+          statusDetail.className = "muted";
+          statusDetail.textContent = "Enter daily pills, box size, and stock.";
+          healthCell.append(statusBadge, statusDetail);
+
+          planCell.replaceChildren();
+          planLine.className = "muted";
+          planLine.textContent = "Planning updates automatically when the row is complete.";
+          planCell.appendChild(planLine);
           return;
         }
 
@@ -560,7 +573,8 @@
         const boxesToOrder = shortage > 0 ? Math.ceil(shortage / boxSize) : 0;
         const projectedStock = stock + (boxesToOrder * boxSize);
         const projectedRemaining = projectedStock - pillsNeededByTarget;
-        const safeUntilBufferDate = daily === 0 ? null : plusDays(today, Math.max(0, Math.floor((stock - bufferPills) / daily)));
+        const bufferOffsetDays = daily === 0 ? Infinity : Math.floor((stock - bufferPills) / daily);
+        const safeUntilBufferDate = daily === 0 ? null : plusDays(today, Math.max(0, bufferOffsetDays));
         const immediateShortage = Math.max(0, bufferPills - stock);
         const immediateBoxesToOrder = immediateShortage > 0 ? Math.ceil(immediateShortage / boxSize) : 0;
         const hasCoverage = daily === 0
@@ -599,7 +613,7 @@
         } else if (!targetInPast && shortage > 0) {
           statusClass = "warn";
           statusText = "Order needed";
-          detailText = safeUntilBufferDate < today
+          detailText = bufferOffsetDays < 0
             ? "Stock has already dropped into the buffer."
             : `Stock drops into the buffer around ${formatDate(safeUntilBufferDate)}.`;
         }
