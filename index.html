@@ -371,7 +371,7 @@
       const rowCount = Math.max(daily.length, boxes.length, stock.length, 1);
 
       targetDateInput.value = targetDate || "";
-      bufferInput.value = buffer || 14;
+      bufferInput.value = buffer !== null ? buffer : 14;
 
       for (let index = 0; index < rowCount; index += 1) {
         createRow({
@@ -528,25 +528,36 @@
         : missingTargetDate
           ? "Choose a target date to start planning."
           : "";
+      targetDateInput.setAttribute("aria-invalid", invalidTargetDate ? "true" : "false");
       bufferStatus.textContent = invalidBuffer
         ? "Enter a non-negative whole number of buffer days."
         : rawBufferValue === ""
           ? "Buffer is using the default of 14 days."
           : "";
+      bufferInput.setAttribute("aria-invalid", invalidBuffer ? "true" : "false");
 
       rows.forEach((row, index) => {
         const labelCell = row.querySelector(".medicine-label");
         const healthCell = row.querySelector(".health");
         const planCell = row.querySelector(".plan");
-        const daily = Number(row.querySelector(".daily").value);
-        const boxSize = Number(row.querySelector(".box").value);
-        const stock = Number(row.querySelector(".stock").value);
+        const dailyInput = row.querySelector(".daily");
+        const boxInput = row.querySelector(".box");
+        const stockInput = row.querySelector(".stock");
+        const daily = Number(dailyInput.value);
+        const boxSize = Number(boxInput.value);
+        const stock = Number(stockInput.value);
         const bufferPills = daily > 0 ? daily * bufferDays : 0;
         const rowName = `Medicine ${index + 1}`;
+        const dailyInvalid = Number.isNaN(daily) || daily < 0;
+        const boxInvalid = Number.isNaN(boxSize) || boxSize <= 0;
+        const stockInvalid = Number.isNaN(stock) || stock < 0;
 
         labelCell.textContent = rowName;
+        dailyInput.setAttribute("aria-invalid", dailyInvalid ? "true" : "false");
+        boxInput.setAttribute("aria-invalid", boxInvalid ? "true" : "false");
+        stockInput.setAttribute("aria-invalid", stockInvalid ? "true" : "false");
 
-        if (Number.isNaN(daily) || daily < 0 || Number.isNaN(boxSize) || boxSize <= 0 || Number.isNaN(stock) || stock < 0) {
+        if (dailyInvalid || boxInvalid || stockInvalid) {
           const statusBadge = document.createElement("span");
           const statusDetail = document.createElement("div");
           const planLine = document.createElement("div");
