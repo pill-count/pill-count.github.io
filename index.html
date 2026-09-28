@@ -263,15 +263,19 @@
   </main>
 
   <template id="medicine-row-template">
-    <tr>
-      <th class="medicine-label" data-label="Medicine" scope="row"></th>
-      <td data-label="Daily pills"><span class="sr-only daily-label">Daily pills</span><input class="daily" type="number" min="0" step="0.5" aria-label="Daily pills"></td>
-      <td data-label="Box size"><span class="sr-only box-label">Box size</span><input class="box" type="number" min="1" step="1" aria-label="Box size"></td>
-      <td data-label="Current stock"><span class="sr-only stock-label">Current stock</span><input class="stock" type="number" min="0" step="1" aria-label="Current stock"></td>
-      <td class="health" data-label="Stock health" aria-live="polite" aria-atomic="true"></td>
-      <td class="plan" data-label="Planning" aria-live="polite" aria-atomic="true"></td>
-      <td data-label="Remove"><button class="secondary remove-row" type="button">Remove</button></td>
-    </tr>
+    <table>
+      <tbody>
+        <tr>
+          <th class="medicine-label" data-label="Medicine" scope="row"></th>
+          <td data-label="Daily pills"><span class="sr-only daily-label">Daily pills</span><input class="daily" type="number" min="0" step="0.5" aria-label="Daily pills"></td>
+          <td data-label="Box size"><span class="sr-only box-label">Box size</span><input class="box" type="number" min="1" step="1" aria-label="Box size"></td>
+          <td data-label="Current stock"><span class="sr-only stock-label">Current stock</span><input class="stock" type="number" min="0" step="1" aria-label="Current stock"></td>
+          <td class="health" data-label="Stock health" aria-live="polite" aria-atomic="true"></td>
+          <td class="plan" data-label="Planning" aria-live="polite" aria-atomic="true"></td>
+          <td data-label="Remove"><button class="secondary remove-row" type="button">Remove</button></td>
+        </tr>
+      </tbody>
+    </table>
   </template>
 
   <script>
@@ -328,7 +332,7 @@
     }
 
     function createRow(values = {}) {
-      const row = rowTemplate.content.firstElementChild.cloneNode(true);
+      const row = rowTemplate.content.querySelector("tr").cloneNode(true);
       const rowId = rowIdSequence++;
       const labelCell = row.querySelector(".medicine-label");
       const dailyInput = row.querySelector(".daily");
