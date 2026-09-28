@@ -272,6 +272,7 @@
     const bufferInput = document.getElementById("buffer-days");
     const addRowButton = document.getElementById("add-row");
     const rowTemplate = document.getElementById("medicine-row-template");
+    let rowIdSequence = 0;
 
     function parseList(value) {
       return value ? value.split("_").map(item => item.trim()) : [];
@@ -302,9 +303,17 @@
 
     function createRow(values = {}) {
       const row = rowTemplate.content.firstElementChild.cloneNode(true);
-      row.querySelector(".daily").value = values.daily ?? "";
-      row.querySelector(".box").value = values.box ?? "";
-      row.querySelector(".stock").value = values.stock ?? "";
+      const rowId = rowIdSequence++;
+      const dailyInput = row.querySelector(".daily");
+      const boxInput = row.querySelector(".box");
+      const stockInput = row.querySelector(".stock");
+
+      dailyInput.id = `daily-${rowId}`;
+      boxInput.id = `box-${rowId}`;
+      stockInput.id = `stock-${rowId}`;
+      dailyInput.value = values.daily ?? "";
+      boxInput.value = values.box ?? "";
+      stockInput.value = values.stock ?? "";
       rowsContainer.appendChild(row);
     }
 
@@ -448,8 +457,12 @@
         const boxSize = Number(row.querySelector(".box").value);
         const stock = Number(row.querySelector(".stock").value);
         const bufferPills = daily > 0 ? daily * bufferDays : 0;
+        const rowName = `Medicine ${index + 1}`;
 
-        labelCell.textContent = `Medicine ${index + 1}`;
+        labelCell.textContent = rowName;
+        row.querySelector(".daily").setAttribute("aria-label", `${rowName} daily pills`);
+        row.querySelector(".box").setAttribute("aria-label", `${rowName} box size`);
+        row.querySelector(".stock").setAttribute("aria-label", `${rowName} current stock`);
 
         if (!daily || !boxSize || stock < 0) {
           healthCell.innerHTML = `<span class="status warn">Needs input</span><div class="muted">Enter daily pills, box size, and stock.</div>`;
@@ -468,6 +481,7 @@
         const safeUntilBufferDate = plusDays(today, Math.max(0, Math.floor((stock - bufferPills) / daily)));
         const hasCoverage = daysUntilTarget !== null && daysUntilTarget >= 0 && projectedRemaining >= bufferPills;
         const belowBufferNow = stock <= bufferPills;
+        const targetInPast = daysUntilTarget !== null && daysUntilTarget < 0;
         let statusClass = "ok";
         let statusText = "Ready";
         let detailText = `Runs out around ${formatDate(runOutDate)} after about ${formatNumber(daysLeft)} days.`;
@@ -477,7 +491,7 @@
           <div class="muted">Projected stock on target date: ${formatNumber(projectedRemaining)} pills.</div>
         `;
 
-        if (targetDate && daysUntilTarget < 0) {
+        if (targetInPast) {
           statusClass = "urgent";
           statusText = "Target passed";
           detailText = `Target date ${formatDate(targetDate)} was ${pluralize(Math.abs(daysUntilTarget), "day")} ago.`;
@@ -488,13 +502,11 @@
           `;
         }
 
-        if (daysUntilTarget !== null && daysUntilTarget < 0) {
-          metrics.boxesToOrder += 0;
-        } else if (belowBufferNow) {
+        if (!targetInPast && belowBufferNow) {
           statusClass = "urgent";
           statusText = "Below buffer";
           detailText = `Current stock is already inside the ${pluralize(bufferDays, "day")} buffer.`;
-        } else if (shortage > 0) {
+        } else if (!targetInPast && shortage > 0) {
           statusClass = "warn";
           statusText = "Order needed";
           detailText = `Stock drops into the buffer around ${formatDate(safeUntilBufferDate)}.`;
@@ -503,7 +515,7 @@
         if (hasCoverage) {
           metrics.readyCount += 1;
         }
-        if (!(targetDate && daysUntilTarget < 0)) {
+        if (!targetInPast) {
           metrics.boxesToOrder += boxesToOrder;
         }
 
