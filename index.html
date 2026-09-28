@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pill Count Planner</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.4;
+    }
+
+    body {
+      margin: 0;
+      background: #f5f7fb;
+      color: #1d2735;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1rem 3rem;
+    }
+
+    h1,
+    h2,
+    p {
+      margin-top: 0;
+    }
+
+    .panel {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(29, 39, 53, 0.08);
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .controls,
+    .summary {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .controls {
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      align-items: end;
+    }
+
+    label {
+      display: grid;
+      gap: 0.35rem;
+      font-weight: 600;
+    }
+
+    input,
+    button {
+      font: inherit;
+    }
+
+    input {
+      border: 1px solid #ccd5e0;
+      border-radius: 10px;
+      padding: 0.7rem 0.8rem;
+      background: #fff;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 0.75rem 1rem;
+      background: #1f6feb;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    button.secondary {
+      background: #e8eef8;
+      color: #1d2735;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .summary {
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    .metric {
+      background: #f7faff;
+      border: 1px solid #d6e6ff;
+      border-radius: 12px;
+      padding: 1rem;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 1.4rem;
+      margin-top: 0.25rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 0.75rem 0.5rem;
+      border-bottom: 1px solid #e6edf5;
+      vertical-align: top;
+    }
+
+    th {
+      font-size: 0.92rem;
+      color: #516173;
+    }
+
+    td input {
+      min-width: 6rem;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 0.3rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+    }
+
+    .ok {
+      background: #def7e5;
+      color: #166534;
+    }
+
+    .warn {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .urgent {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .muted {
+      color: #5f6f82;
+    }
+
+    @media (max-width: 860px) {
+      table,
+      thead,
+      tbody,
+      th,
+      td,
+      tr {
+        display: block;
+      }
+
+      thead {
+        display: none;
+      }
+
+      tr {
+        border: 1px solid #e6edf5;
+        border-radius: 14px;
+        padding: 0.5rem;
+        margin-bottom: 0.75rem;
+      }
+
+      td {
+        border: 0;
+        padding: 0.5rem;
+      }
+
+      td::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #516173;
+        margin-bottom: 0.25rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="panel">
+      <h1>Pill Count Planner</h1>
+      <p class="muted">Track stock per medicine, calculate how long it lasts, and estimate how many boxes to order before your target date.</p>
+      <div class="controls">
+        <label>
+          Target date
+          <input id="target-date" type="date">
+        </label>
+        <label>
+          Buffer (days)
+          <input id="buffer-days" type="number" min="0" step="1" value="14">
+        </label>
+      </div>
+      <div class="actions">
+        <button id="add-row" type="button">Add medicine</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Overview</h2>
+      <div id="summary" class="summary"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Medicines</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Medicine</th>
+            <th>Daily pills</th>
+            <th>Box size</th>
+            <th>Current stock</th>
+            <th>Stock health</th>
+            <th>Planning</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="medicine-rows"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <template id="medicine-row-template">
+    <tr>
+      <td data-label="Medicine"></td>
+      <td data-label="Daily pills"><input class="daily" type="number" min="0" step="0.5"></td>
+      <td data-label="Box size"><input class="box" type="number" min="1" step="1"></td>
+      <td data-label="Current stock"><input class="stock" type="number" min="0" step="1"></td>
+      <td class="health" data-label="Stock health"></td>
+      <td class="plan" data-label="Planning"></td>
+      <td data-label="Remove"><button class="secondary remove-row" type="button">Remove</button></td>
+    </tr>
+  </template>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const rowsContainer = document.getElementById("medicine-rows");
+    const summary = document.getElementById("summary");
+    const targetDateInput = document.getElementById("target-date");
+    const bufferInput = document.getElementById("buffer-days");
+    const addRowButton = document.getElementById("add-row");
+    const rowTemplate = document.getElementById("medicine-row-template");
+
+    function parseList(value) {
+      return value ? value.split("_").map(item => item.trim()) : [];
+    }
+
+    function parseDutchDate(value) {
+      if (!value) {
+        return null;
+      }
+
+      const match = value.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+      if (!match) {
+        return null;
+      }
+
+      const [, day, month, year] = match;
+      return `${year}-${month}-${day}`;
+    }
+
+    function formatDutchDate(value) {
+      if (!value) {
+        return "";
+      }
+
+      const [year, month, day] = value.split("-");
+      return `${day}-${month}-${year}`;
+    }
+
+    function createRow(values = {}) {
+      const row = rowTemplate.content.firstElementChild.cloneNode(true);
+      row.querySelector(".daily").value = values.daily ?? "";
+      row.querySelector(".box").value = values.box ?? "";
+      row.querySelector(".stock").value = values.stock ?? "";
+      rowsContainer.appendChild(row);
+    }
+
+    function initializeRows() {
+      const daily = parseList(params.get("aantal"));
+      const boxes = parseList(params.get("dozen"));
+      const stock = parseList(params.get("voorraad"));
+      const targetDate = parseDutchDate(params.get("datum"));
+      const buffer = params.get("buffer");
+      const rowCount = Math.max(daily.length, boxes.length, stock.length, 1);
+
+      targetDateInput.value = targetDate || "";
+      bufferInput.value = buffer || 14;
+
+      for (let index = 0; index < rowCount; index += 1) {
+        createRow({
+          daily: daily[index] || "",
+          box: boxes[index] || "",
+          stock: stock[index] || ""
+        });
+      }
+    }
+
+    function getRows() {
+      return Array.from(rowsContainer.querySelectorAll("tr"));
+    }
+
+    function startOfDay(date) {
+      return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    }
+
+    function plusDays(date, days) {
+      const next = new Date(date);
+      next.setDate(next.getDate() + days);
+      return next;
+    }
+
+    function formatDate(date) {
+      return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(date);
+    }
+
+    function formatNumber(value) {
+      return Number.isFinite(value)
+        ? new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value)
+        : "—";
+    }
+
+    function pluralize(value, unit) {
+      return `${value} ${unit}${value === 1 ? "" : "s"}`;
+    }
+
+    function updateSummary(metrics) {
+      const cards = [
+        {
+          label: "Medicines tracked",
+          value: metrics.medicineCount
+        },
+        {
+          label: "Days until target",
+          value: metrics.daysUntilTarget >= 0 ? metrics.daysUntilTarget : "—"
+        },
+        {
+          label: "Boxes to order",
+          value: metrics.boxesToOrder
+        },
+        {
+          label: "Medicines ready",
+          value: `${metrics.readyCount}/${metrics.medicineCount}`
+        }
+      ];
+
+      summary.innerHTML = cards.map(card => `
+        <div class="metric">
+          <span>${card.label}</span>
+          <strong>${card.value}</strong>
+        </div>
+      `).join("");
+    }
+
+    function updateUrl(rows) {
+      const nextParams = new URLSearchParams();
+      if (targetDateInput.value) {
+        nextParams.set("datum", formatDutchDate(targetDateInput.value));
+      }
+
+      if (bufferInput.value) {
+        nextParams.set("buffer", bufferInput.value);
+      }
+
+      const daily = [];
+      const boxes = [];
+      const stock = [];
+
+      rows.forEach(row => {
+        daily.push(row.querySelector(".daily").value || "0");
+        boxes.push(row.querySelector(".box").value || "0");
+        stock.push(row.querySelector(".stock").value || "0");
+      });
+
+      nextParams.set("aantal", daily.join("_"));
+      nextParams.set("dozen", boxes.join("_"));
+      nextParams.set("voorraad", stock.join("_"));
+
+      const nextUrl = `${window.location.pathname}?${nextParams.toString()}`;
+      window.history.replaceState({}, "", nextUrl);
+    }
+
+    function recalculate() {
+      const rows = getRows();
+      const bufferDays = Math.max(Number(bufferInput.value) || 0, 0);
+      const today = startOfDay(new Date());
+      const targetDate = targetDateInput.value ? startOfDay(new Date(`${targetDateInput.value}T00:00:00`)) : null;
+      const daysUntilTarget = targetDate ? Math.max(0, Math.round((targetDate - today) / 86400000)) : 0;
+      const metrics = {
+        medicineCount: rows.length,
+        daysUntilTarget,
+        boxesToOrder: 0,
+        readyCount: 0
+      };
+
+      rows.forEach((row, index) => {
+        const labelCell = row.children[0];
+        const healthCell = row.querySelector(".health");
+        const planCell = row.querySelector(".plan");
+        const daily = Number(row.querySelector(".daily").value);
+        const boxSize = Number(row.querySelector(".box").value);
+        const stock = Number(row.querySelector(".stock").value);
+        const bufferPills = daily > 0 ? daily * bufferDays : 0;
+
+        labelCell.textContent = `Medicine ${index + 1}`;
+
+        if (!daily || !boxSize || stock < 0) {
+          healthCell.innerHTML = `<span class="status warn">Needs input</span><div class="muted">Enter daily pills, box size, and stock.</div>`;
+          planCell.innerHTML = `<div class="muted">Planning updates automatically when the row is complete.</div>`;
+          return;
+        }
+
+        const daysLeft = stock / daily;
+        const runOutDate = plusDays(today, Math.floor(daysLeft));
+        const pillsNeededByTarget = daily * daysUntilTarget;
+        const targetRequirement = pillsNeededByTarget + bufferPills;
+        const shortage = Math.max(0, targetRequirement - stock);
+        const boxesToOrder = shortage > 0 ? Math.ceil(shortage / boxSize) : 0;
+        const projectedStock = stock + (boxesToOrder * boxSize);
+        const projectedRemaining = projectedStock - pillsNeededByTarget;
+        const safeUntilBufferDate = plusDays(today, Math.max(0, Math.floor((stock - bufferPills) / daily)));
+        const hasCoverage = projectedRemaining >= bufferPills;
+        const belowBufferNow = stock <= bufferPills;
+        let statusClass = "ok";
+        let statusText = "Ready";
+        let detailText = `Runs out around ${formatDate(runOutDate)} after about ${formatNumber(daysLeft)} days.`;
+
+        if (belowBufferNow) {
+          statusClass = "urgent";
+          statusText = "Below buffer";
+          detailText = `Current stock is already inside the ${pluralize(bufferDays, "day")} buffer.`;
+        } else if (shortage > 0) {
+          statusClass = "warn";
+          statusText = "Order needed";
+          detailText = `Stock drops into the buffer around ${formatDate(safeUntilBufferDate)}.`;
+        }
+
+        if (hasCoverage) {
+          metrics.readyCount += 1;
+        }
+        metrics.boxesToOrder += boxesToOrder;
+
+        healthCell.innerHTML = `
+          <span class="status ${statusClass}">${statusText}</span>
+          <div>${detailText}</div>
+        `;
+
+        planCell.innerHTML = `
+          <div><strong>${boxesToOrder}</strong> ${boxesToOrder === 1 ? "box" : "boxes"} to order</div>
+          <div class="muted">Need ${formatNumber(pillsNeededByTarget)} pills by ${targetDate ? formatDate(targetDate) : "the target date"} and ${formatNumber(bufferPills)} extra for buffer.</div>
+          <div class="muted">Projected stock on target date: ${formatNumber(projectedRemaining)} pills.</div>
+        `;
+      });
+
+      updateSummary(metrics);
+      updateUrl(rows);
+    }
+
+    rowsContainer.addEventListener("input", recalculate);
+    rowsContainer.addEventListener("click", event => {
+      if (event.target.classList.contains("remove-row")) {
+        if (getRows().length > 1) {
+          event.target.closest("tr").remove();
+        } else {
+          event.target.closest("tr").querySelectorAll("input").forEach(input => {
+            input.value = "";
+          });
+        }
+        recalculate();
+      }
+    });
+
+    targetDateInput.addEventListener("input", recalculate);
+    bufferInput.addEventListener("input", recalculate);
+    addRowButton.addEventListener("click", () => {
+      createRow();
+      recalculate();
+    });
+
+    initializeRows();
+    recalculate();
+  </script>
+</body>
+</html>
