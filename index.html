@@ -48,6 +48,11 @@
       align-items: end;
     }
 
+    .control-group {
+      display: grid;
+      gap: 0.35rem;
+    }
+
     label {
       display: grid;
       gap: 0.35rem;
@@ -212,14 +217,20 @@
       <h1>Pill Count Planner</h1>
       <p class="muted">Track stock per medicine, calculate how long it lasts, and estimate how many boxes to order before your target date.</p>
       <div class="controls">
-        <label>
-          Target date
-          <input id="target-date" type="date">
-        </label>
-        <label>
-          Buffer (days)
-          <input id="buffer-days" type="number" min="0" step="1" value="14">
-        </label>
+        <div class="control-group">
+          <label>
+            Target date
+            <input id="target-date" type="date" aria-describedby="target-date-status">
+          </label>
+          <div id="target-date-status" class="muted" aria-live="polite"></div>
+        </div>
+        <div class="control-group">
+          <label>
+            Buffer (days)
+            <input id="buffer-days" type="number" min="0" step="1" value="14" aria-describedby="buffer-status">
+          </label>
+          <div id="buffer-status" class="muted" aria-live="polite"></div>
+        </div>
       </div>
       <div class="actions">
         <button id="add-row" type="button">Add medicine</button>
@@ -269,7 +280,9 @@
     const summary = document.getElementById("summary");
     const summaryAnnouncement = document.getElementById("summary-announcement");
     const targetDateInput = document.getElementById("target-date");
+    const targetDateStatus = document.getElementById("target-date-status");
     const bufferInput = document.getElementById("buffer-days");
+    const bufferStatus = document.getElementById("buffer-status");
     const addRowButton = document.getElementById("add-row");
     const rowTemplate = document.getElementById("medicine-row-template");
     let rowIdSequence = 0;
@@ -414,7 +427,7 @@
       return `${value} ${unit}${value === 1 ? "" : "s"}`;
     }
 
-    function updateSummary(metrics) {
+    function updateSummary(metrics, options = {}) {
       const cards = [
         {
           label: "Medicines tracked",
@@ -450,7 +463,7 @@
         metric.append(label, value);
         summary.appendChild(metric);
       });
-      summaryAnnouncement.textContent = `${pluralize(metrics.medicineCount, "medicine")} tracked. ${metrics.boxesToOrder} ${metrics.boxesToOrder === 1 ? "box" : "boxes"} to order. ${pluralize(metrics.readyCount, "medicine")} ready.`;
+      summaryAnnouncement.textContent = `${pluralize(metrics.medicineCount, "medicine")} tracked. ${metrics.boxesToOrder} ${metrics.boxesToOrder === 1 ? "box" : "boxes"} to order. ${pluralize(metrics.readyCount, "medicine")} ready.${options.invalidTargetDate ? " Target date is invalid." : ""}`;
     }
 
     function updateUrl(rows) {
@@ -484,6 +497,9 @@
       const bufferDays = getEffectiveBufferDays();
       const today = startOfDay(new Date());
       const parsedTargetDate = targetDateInput.value ? parseInputDate(targetDateInput.value) : null;
+      const invalidTargetDate = Boolean(targetDateInput.value) && !parsedTargetDate;
+      const rawBufferValue = bufferInput.value;
+      const invalidBuffer = rawBufferValue !== "" && (!Number.isFinite(Number(rawBufferValue)) || Number(rawBufferValue) < 0);
       const targetDate = parsedTargetDate ? startOfDay(parsedTargetDate) : null;
       const daysUntilTarget = targetDate ? dayDifference(today, targetDate) : null;
       const planningDays = Math.max(daysUntilTarget ?? 0, 0);
@@ -493,6 +509,13 @@
         boxesToOrder: 0,
         readyCount: 0
       };
+
+      targetDateStatus.textContent = invalidTargetDate ? "Enter a valid calendar date for planning." : "";
+      bufferStatus.textContent = invalidBuffer
+        ? "Enter a non-negative number of buffer days."
+        : rawBufferValue === ""
+          ? "Buffer is using the default of 14 days."
+          : "";
 
       rows.forEach((row, index) => {
         const labelCell = row.querySelector(".medicine-label");
@@ -594,7 +617,7 @@
         });
       });
 
-      updateSummary(metrics);
+      updateSummary(metrics, { invalidTargetDate });
       updateUrl(rows);
     }
 
