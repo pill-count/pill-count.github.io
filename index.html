@@ -220,7 +220,7 @@
         <div class="control-group">
           <label>
             Target date
-            <input id="target-date" type="date" aria-describedby="target-date-status">
+            <input id="target-date" type="date" aria-describedby="target-date-status" required>
           </label>
           <div id="target-date-status" class="muted" aria-live="polite"></div>
         </div>
@@ -267,9 +267,9 @@
       <tbody>
         <tr>
           <th class="medicine-label" data-label="Medicine" scope="row"></th>
-          <td data-label="Daily pills"><span class="sr-only daily-label">Daily pills</span><input class="daily" type="number" min="0" step="0.5" aria-label="Daily pills"></td>
-          <td data-label="Box size"><span class="sr-only box-label">Box size</span><input class="box" type="number" min="1" step="1" aria-label="Box size"></td>
-          <td data-label="Current stock"><span class="sr-only stock-label">Current stock</span><input class="stock" type="number" min="0" step="1" aria-label="Current stock"></td>
+          <td data-label="Daily pills"><span class="sr-only daily-label">Daily pills</span><input class="daily" type="number" min="0" step="0.5" aria-label="Daily pills" required></td>
+          <td data-label="Box size"><span class="sr-only box-label">Box size</span><input class="box" type="number" min="1" step="1" aria-label="Box size" required></td>
+          <td data-label="Current stock"><span class="sr-only stock-label">Current stock</span><input class="stock" type="number" min="0" step="1" aria-label="Current stock" required></td>
           <td class="health" data-label="Stock health" aria-live="polite" aria-atomic="true"></td>
           <td class="plan" data-label="Planning" aria-live="polite" aria-atomic="true"></td>
           <td data-label="Remove"><button class="secondary remove-row" type="button">Remove</button></td>
@@ -560,9 +560,9 @@
         const stock = Number(stockInput.value);
         const bufferPills = daily > 0 ? daily * bufferDays : 0;
         const rowName = `Medicine ${index + 1}`;
-        const dailyInvalid = Number.isNaN(daily) || daily < 0;
-        const boxInvalid = Number.isNaN(boxSize) || boxSize <= 0;
-        const stockInvalid = Number.isNaN(stock) || stock < 0;
+        const dailyInvalid = !dailyInput.validity.valid;
+        const boxInvalid = !boxInput.validity.valid;
+        const stockInvalid = !stockInput.validity.valid;
 
         labelCell.textContent = rowName;
         dailyInput.setAttribute("aria-invalid", dailyInvalid ? "true" : "false");
