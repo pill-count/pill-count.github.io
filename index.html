@@ -466,7 +466,7 @@
         metric.append(label, value);
         summary.appendChild(metric);
       });
-      summaryAnnouncement.textContent = `${pluralize(metrics.medicineCount, "medicine")} tracked. ${metrics.boxesToOrder} ${metrics.boxesToOrder === 1 ? "box" : "boxes"} to order. ${pluralize(metrics.readyCount, "medicine")} ready.${options.invalidTargetDate ? " Target date is invalid." : ""}`;
+      summaryAnnouncement.textContent = `${pluralize(metrics.medicineCount, "medicine")} tracked. ${options.targetStatusText || "Target date not set."} ${metrics.boxesToOrder} ${metrics.boxesToOrder === 1 ? "box" : "boxes"} to order. ${pluralize(metrics.readyCount, "medicine")} ready.`;
     }
 
     function updateUrl(rows) {
@@ -500,6 +500,7 @@
       const bufferDays = getEffectiveBufferDays();
       const today = startOfDay(new Date());
       const parsedTargetDate = targetDateInput.value ? parseInputDate(targetDateInput.value) : null;
+      const missingTargetDate = !targetDateInput.value;
       const invalidTargetDate = Boolean(targetDateInput.value) && !parsedTargetDate;
       const rawBufferValue = bufferInput.value;
       const invalidBuffer = rawBufferValue !== "" && (!Number.isFinite(Number(rawBufferValue)) || Number(rawBufferValue) < 0);
@@ -513,7 +514,11 @@
         readyCount: 0
       };
 
-      targetDateStatus.textContent = invalidTargetDate ? "Enter a valid calendar date for planning." : "";
+      targetDateStatus.textContent = invalidTargetDate
+        ? "Enter a valid calendar date for planning."
+        : missingTargetDate
+          ? "Choose a target date to start planning."
+          : "";
       bufferStatus.textContent = invalidBuffer
         ? "Enter a non-negative number of buffer days."
         : rawBufferValue === ""
@@ -551,20 +556,24 @@
           return;
         }
 
-        if (invalidTargetDate) {
+        if (invalidTargetDate || missingTargetDate) {
           const statusBadge = document.createElement("span");
           const statusDetail = document.createElement("div");
           const planLine = document.createElement("div");
 
           healthCell.replaceChildren();
           statusBadge.className = "status warn";
-          statusBadge.textContent = "Invalid target date";
-          statusDetail.textContent = "Enter a valid calendar date to calculate planning advice.";
+          statusBadge.textContent = invalidTargetDate ? "Invalid target date" : "Add target date";
+          statusDetail.textContent = invalidTargetDate
+            ? "Enter a valid calendar date to calculate planning advice."
+            : "Choose a target date to calculate planning advice.";
           healthCell.append(statusBadge, statusDetail);
 
           planCell.replaceChildren();
           planLine.className = "muted";
-          planLine.textContent = "Planning is paused until the target date is valid.";
+          planLine.textContent = invalidTargetDate
+            ? "Planning is paused until the target date is valid."
+            : "Planning is paused until a target date is provided.";
           planCell.appendChild(planLine);
           return;
         }
@@ -654,7 +663,15 @@
         });
       });
 
-      updateSummary(metrics, { invalidTargetDate });
+      const targetStatusText = invalidTargetDate
+        ? "Target date is invalid."
+        : missingTargetDate
+          ? "Target date not set."
+          : daysUntilTarget < 0
+            ? `Target date passed by ${pluralize(Math.abs(daysUntilTarget), "day")}.`
+            : `Target date in ${pluralize(daysUntilTarget, "day")}.`;
+
+      updateSummary(metrics, { targetStatusText });
       updateUrl(rows);
     }
 
