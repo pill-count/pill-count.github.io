@@ -385,9 +385,8 @@
     }
 
     function plusDays(date, days) {
-      const next = new Date(date);
-      next.setDate(next.getDate() + days);
-      return next;
+      const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate() + days));
+      return new Date(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate());
     }
 
     function formatDate(date) {
@@ -546,7 +545,9 @@
         const safeUntilBufferDate = daily === 0 ? null : plusDays(today, Math.max(0, Math.floor((stock - bufferPills) / daily)));
         const immediateShortage = Math.max(0, bufferPills - stock);
         const immediateBoxesToOrder = immediateShortage > 0 ? Math.ceil(immediateShortage / boxSize) : 0;
-        const hasCoverage = daysUntilTarget !== null && daysUntilTarget >= 0 && projectedRemaining >= bufferPills;
+        const hasCoverage = daily === 0
+          ? true
+          : daysUntilTarget !== null && daysUntilTarget >= 0 && projectedRemaining >= bufferPills;
         const belowBufferNow = daily > 0 && stock <= bufferPills;
         const targetInPast = daysUntilTarget !== null && daysUntilTarget < 0;
         let statusClass = "ok";
