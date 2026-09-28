@@ -488,9 +488,9 @@
       const stock = [];
 
       rows.forEach(row => {
-        daily.push(row.querySelector(".daily").value || "0");
-        boxes.push(row.querySelector(".box").value || "0");
-        stock.push(row.querySelector(".stock").value || "0");
+        daily.push(row.querySelector(".daily").value);
+        boxes.push(row.querySelector(".box").value);
+        stock.push(row.querySelector(".stock").value);
       });
 
       nextParams.set("aantal", daily.join("_"));
@@ -588,7 +588,7 @@
         }
 
         const daysLeft = daily === 0 ? Infinity : stock / daily;
-        const runOutDate = daily === 0 ? null : plusDays(today, Math.floor(daysLeft));
+        const runOutDate = daily === 0 ? null : plusDays(today, Math.ceil(daysLeft));
         const pillsNeededByTarget = daily * planningDays;
         const targetRequirement = pillsNeededByTarget + bufferPills;
         const shortage = Math.max(0, targetRequirement - stock);
