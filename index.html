@@ -467,7 +467,7 @@
 
     function updateUrl(rows) {
       const nextParams = new URLSearchParams();
-      if (targetDateInput.value) {
+      if (targetDateInput.value && parseInputDate(targetDateInput.value)) {
         nextParams.set("datum", formatDutchDate(targetDateInput.value));
       }
 
@@ -531,6 +531,24 @@
         if (Number.isNaN(daily) || daily < 0 || Number.isNaN(boxSize) || boxSize <= 0 || Number.isNaN(stock) || stock < 0) {
           healthCell.innerHTML = `<span class="status warn">Needs input</span><div class="muted">Enter daily pills, box size, and stock.</div>`;
           planCell.innerHTML = `<div class="muted">Planning updates automatically when the row is complete.</div>`;
+          return;
+        }
+
+        if (invalidTargetDate) {
+          const statusBadge = document.createElement("span");
+          const statusDetail = document.createElement("div");
+          const planLine = document.createElement("div");
+
+          healthCell.replaceChildren();
+          statusBadge.className = "status warn";
+          statusBadge.textContent = "Invalid target date";
+          statusDetail.textContent = "Enter a valid calendar date to calculate planning advice.";
+          healthCell.append(statusBadge, statusDetail);
+
+          planCell.replaceChildren();
+          planLine.className = "muted";
+          planLine.textContent = "Planning is paused until the target date is valid.";
+          planCell.appendChild(planLine);
           return;
         }
 
