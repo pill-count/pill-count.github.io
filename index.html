@@ -289,6 +289,8 @@
     const bufferStatus = document.getElementById("buffer-status");
     const addRowButton = document.getElementById("add-row");
     const rowTemplate = document.getElementById("medicine-row-template");
+    const initialQueryString = params.toString();
+    let hasUserInteracted = false;
     let rowIdSequence = 0;
 
     function parseList(value) {
@@ -423,7 +425,7 @@
 
     function getEffectiveBufferDays() {
       const value = Number(bufferInput.value);
-      return Number.isFinite(value) && value >= 0 ? value : 14;
+      return Number.isFinite(value) && value >= 0 && Number.isInteger(value) ? value : 14;
     }
 
     function pluralize(value, unit) {
@@ -470,6 +472,10 @@
     }
 
     function updateUrl(rows) {
+      if (!hasUserInteracted && !initialQueryString) {
+        return;
+      }
+
       const nextParams = new URLSearchParams();
       if (targetDateInput.value && parseInputDate(targetDateInput.value)) {
         nextParams.set("datum", formatDutchDate(targetDateInput.value));
@@ -491,7 +497,10 @@
       nextParams.set("dozen", boxes.join("_"));
       nextParams.set("voorraad", stock.join("_"));
 
-      const nextUrl = `${window.location.pathname}?${nextParams.toString()}`;
+      const queryString = nextParams.toString();
+      const nextUrl = queryString
+        ? `${window.location.pathname}?${queryString}`
+        : window.location.pathname;
       window.history.replaceState({}, "", nextUrl);
     }
 
@@ -503,7 +512,7 @@
       const missingTargetDate = !targetDateInput.value;
       const invalidTargetDate = Boolean(targetDateInput.value) && !parsedTargetDate;
       const rawBufferValue = bufferInput.value;
-      const invalidBuffer = rawBufferValue !== "" && (!Number.isFinite(Number(rawBufferValue)) || Number(rawBufferValue) < 0);
+      const invalidBuffer = rawBufferValue !== "" && (!Number.isFinite(Number(rawBufferValue)) || Number(rawBufferValue) < 0 || !Number.isInteger(Number(rawBufferValue)));
       const targetDate = parsedTargetDate ? startOfDay(parsedTargetDate) : null;
       const daysUntilTarget = targetDate ? dayDifference(today, targetDate) : null;
       const planningDays = Math.max(daysUntilTarget ?? 0, 0);
@@ -520,7 +529,7 @@
           ? "Choose a target date to start planning."
           : "";
       bufferStatus.textContent = invalidBuffer
-        ? "Enter a non-negative number of buffer days."
+        ? "Enter a non-negative whole number of buffer days."
         : rawBufferValue === ""
           ? "Buffer is using the default of 14 days."
           : "";
@@ -675,9 +684,13 @@
       updateUrl(rows);
     }
 
-    rowsContainer.addEventListener("input", recalculate);
+    rowsContainer.addEventListener("input", () => {
+      hasUserInteracted = true;
+      recalculate();
+    });
     rowsContainer.addEventListener("click", event => {
       if (event.target.classList.contains("remove-row")) {
+        hasUserInteracted = true;
         if (getRows().length > 1) {
           event.target.closest("tr").remove();
         } else {
@@ -689,9 +702,16 @@
       }
     });
 
-    targetDateInput.addEventListener("input", recalculate);
-    bufferInput.addEventListener("input", recalculate);
+    targetDateInput.addEventListener("input", () => {
+      hasUserInteracted = true;
+      recalculate();
+    });
+    bufferInput.addEventListener("input", () => {
+      hasUserInteracted = true;
+      recalculate();
+    });
     addRowButton.addEventListener("click", () => {
+      hasUserInteracted = true;
       createRow();
       recalculate();
     });
