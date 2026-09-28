@@ -254,9 +254,9 @@
   <template id="medicine-row-template">
     <tr>
       <th class="medicine-label" data-label="Medicine" scope="row"></th>
-      <td data-label="Daily pills"><input class="daily" type="number" min="0" step="0.5" aria-label="Daily pills"></td>
-      <td data-label="Box size"><input class="box" type="number" min="1" step="1" aria-label="Box size"></td>
-      <td data-label="Current stock"><input class="stock" type="number" min="0" step="1" aria-label="Current stock"></td>
+      <td data-label="Daily pills"><span class="sr-only daily-label">Daily pills</span><input class="daily" type="number" min="0" step="0.5" aria-label="Daily pills"></td>
+      <td data-label="Box size"><span class="sr-only box-label">Box size</span><input class="box" type="number" min="1" step="1" aria-label="Box size"></td>
+      <td data-label="Current stock"><span class="sr-only stock-label">Current stock</span><input class="stock" type="number" min="0" step="1" aria-label="Current stock"></td>
       <td class="health" data-label="Stock health" aria-live="polite" aria-atomic="true"></td>
       <td class="plan" data-label="Planning" aria-live="polite" aria-atomic="true"></td>
       <td data-label="Remove"><button class="secondary remove-row" type="button">Remove</button></td>
@@ -304,13 +304,26 @@
     function createRow(values = {}) {
       const row = rowTemplate.content.firstElementChild.cloneNode(true);
       const rowId = rowIdSequence++;
+      const labelCell = row.querySelector(".medicine-label");
       const dailyInput = row.querySelector(".daily");
       const boxInput = row.querySelector(".box");
       const stockInput = row.querySelector(".stock");
+      const dailyLabel = row.querySelector(".daily-label");
+      const boxLabel = row.querySelector(".box-label");
+      const stockLabel = row.querySelector(".stock-label");
+      const rowName = `Medicine ${rowsContainer.querySelectorAll("tr").length + 1}`;
 
+      labelCell.id = `medicine-${rowId}`;
+      labelCell.textContent = rowName;
+      dailyLabel.id = `daily-label-${rowId}`;
+      boxLabel.id = `box-label-${rowId}`;
+      stockLabel.id = `stock-label-${rowId}`;
       dailyInput.id = `daily-${rowId}`;
       boxInput.id = `box-${rowId}`;
       stockInput.id = `stock-${rowId}`;
+      dailyInput.setAttribute("aria-labelledby", `${labelCell.id} ${dailyLabel.id}`);
+      boxInput.setAttribute("aria-labelledby", `${labelCell.id} ${boxLabel.id}`);
+      stockInput.setAttribute("aria-labelledby", `${labelCell.id} ${stockLabel.id}`);
       dailyInput.value = values.daily ?? "";
       boxInput.value = values.box ?? "";
       stockInput.value = values.stock ?? "";
@@ -362,6 +375,12 @@
 
       const [year, month, day] = value.split("-").map(Number);
       return new Date(year, month - 1, day);
+    }
+
+    function dayDifference(startDate, endDate) {
+      const startUtc = Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+      const endUtc = Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+      return Math.round((endUtc - startUtc) / 86400000);
     }
 
     function formatNumber(value) {
@@ -440,7 +459,7 @@
       const bufferDays = Math.max(Number(bufferInput.value) || 0, 0);
       const today = startOfDay(new Date());
       const targetDate = targetDateInput.value ? startOfDay(parseInputDate(targetDateInput.value)) : null;
-      const daysUntilTarget = targetDate ? Math.round((targetDate - today) / 86400000) : null;
+      const daysUntilTarget = targetDate ? dayDifference(today, targetDate) : null;
       const planningDays = Math.max(daysUntilTarget ?? 0, 0);
       const metrics = {
         medicineCount: rows.length,
@@ -460,9 +479,6 @@
         const rowName = `Medicine ${index + 1}`;
 
         labelCell.textContent = rowName;
-        row.querySelector(".daily").setAttribute("aria-label", `${rowName} daily pills`);
-        row.querySelector(".box").setAttribute("aria-label", `${rowName} box size`);
-        row.querySelector(".stock").setAttribute("aria-label", `${rowName} current stock`);
 
         if (Number.isNaN(daily) || daily < 0 || Number.isNaN(boxSize) || boxSize <= 0 || Number.isNaN(stock) || stock < 0) {
           healthCell.innerHTML = `<span class="status warn">Needs input</span><div class="muted">Enter daily pills, box size, and stock.</div>`;
