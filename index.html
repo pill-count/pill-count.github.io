@@ -509,8 +509,8 @@
       const bufferDays = getEffectiveBufferDays();
       const today = startOfDay(new Date());
       const parsedTargetDate = targetDateInput.value ? parseInputDate(targetDateInput.value) : null;
-      const missingTargetDate = !targetDateInput.value;
-      const invalidTargetDate = Boolean(targetDateInput.value) && !parsedTargetDate;
+      const invalidTargetDate = targetDateInput.validity.badInput || (Boolean(targetDateInput.value) && !parsedTargetDate);
+      const missingTargetDate = !targetDateInput.value && !invalidTargetDate;
       const rawBufferValue = bufferInput.value;
       const invalidBuffer = rawBufferValue !== "" && (!Number.isFinite(Number(rawBufferValue)) || Number(rawBufferValue) < 0 || !Number.isInteger(Number(rawBufferValue)));
       const targetDate = parsedTargetDate ? startOfDay(parsedTargetDate) : null;
