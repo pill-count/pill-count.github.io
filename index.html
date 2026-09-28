@@ -1,0 +1,746 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pill Count Planner</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.4;
+    }
+
+    body {
+      margin: 0;
+      background: #f5f7fb;
+      color: #1d2735;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1rem 3rem;
+    }
+
+    h1,
+    h2,
+    p {
+      margin-top: 0;
+    }
+
+    .panel {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(29, 39, 53, 0.08);
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .controls,
+    .summary {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .controls {
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      align-items: end;
+    }
+
+    .control-group {
+      display: grid;
+      gap: 0.35rem;
+    }
+
+    label {
+      display: grid;
+      gap: 0.35rem;
+      font-weight: 600;
+    }
+
+    input,
+    button {
+      font: inherit;
+    }
+
+    input {
+      border: 1px solid #ccd5e0;
+      border-radius: 10px;
+      padding: 0.7rem 0.8rem;
+      background: #fff;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 0.75rem 1rem;
+      background: #1f6feb;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    button.secondary {
+      background: #e8eef8;
+      color: #1d2735;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .summary {
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    .metric {
+      background: #f7faff;
+      border: 1px solid #d6e6ff;
+      border-radius: 12px;
+      padding: 1rem;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 1.4rem;
+      margin-top: 0.25rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 0.75rem 0.5rem;
+      border-bottom: 1px solid #e6edf5;
+      vertical-align: top;
+    }
+
+    th {
+      font-size: 0.92rem;
+      color: #516173;
+    }
+
+    td input {
+      min-width: 6rem;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 0.3rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+    }
+
+    .ok {
+      background: #def7e5;
+      color: #166534;
+    }
+
+    .warn {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .urgent {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .muted {
+      color: #5f6f82;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @media (max-width: 860px) {
+      table,
+      thead,
+      tbody,
+      th,
+      td,
+      tr {
+        display: block;
+      }
+
+      thead {
+        display: none;
+      }
+
+      tr {
+        border: 1px solid #e6edf5;
+        border-radius: 14px;
+        padding: 0.5rem;
+        margin-bottom: 0.75rem;
+      }
+
+      td {
+        border: 0;
+        padding: 0.5rem;
+      }
+
+      td::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #516173;
+        margin-bottom: 0.25rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="panel">
+      <h1>Pill Count Planner</h1>
+      <p class="muted">Track stock per medicine, calculate how long it lasts, and estimate how many boxes to order before your target date.</p>
+      <div class="controls">
+        <div class="control-group">
+          <label>
+            Target date
+            <input id="target-date" type="date" aria-describedby="target-date-status" required>
+          </label>
+          <div id="target-date-status" class="muted" aria-live="polite"></div>
+        </div>
+        <div class="control-group">
+          <label>
+            Buffer (days)
+            <input id="buffer-days" type="number" min="0" step="1" value="14" aria-describedby="buffer-status">
+          </label>
+          <div id="buffer-status" class="muted" aria-live="polite"></div>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="add-row" type="button">Add medicine</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Overview</h2>
+      <div id="summary-announcement" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+      <div id="summary" class="summary"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Medicines</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Medicine</th>
+            <th>Daily pills</th>
+            <th>Box size</th>
+            <th>Current stock</th>
+            <th>Stock health</th>
+            <th>Planning</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="medicine-rows"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <template id="medicine-row-template">
+    <table>
+      <tbody>
+        <tr>
+          <th class="medicine-label" data-label="Medicine" scope="row"></th>
+          <td data-label="Daily pills"><span class="sr-only daily-label">Daily pills</span><input class="daily" type="number" min="0" step="0.5" aria-label="Daily pills" required></td>
+          <td data-label="Box size"><span class="sr-only box-label">Box size</span><input class="box" type="number" min="1" step="1" aria-label="Box size" required></td>
+          <td data-label="Current stock"><span class="sr-only stock-label">Current stock</span><input class="stock" type="number" min="0" step="1" aria-label="Current stock" required></td>
+          <td class="health" data-label="Stock health" aria-live="polite" aria-atomic="true"></td>
+          <td class="plan" data-label="Planning" aria-live="polite" aria-atomic="true"></td>
+          <td data-label="Remove"><button class="secondary remove-row" type="button">Remove</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </template>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const rowsContainer = document.getElementById("medicine-rows");
+    const summary = document.getElementById("summary");
+    const summaryAnnouncement = document.getElementById("summary-announcement");
+    const targetDateInput = document.getElementById("target-date");
+    const targetDateStatus = document.getElementById("target-date-status");
+    const bufferInput = document.getElementById("buffer-days");
+    const bufferStatus = document.getElementById("buffer-status");
+    const addRowButton = document.getElementById("add-row");
+    const rowTemplate = document.getElementById("medicine-row-template");
+    const initialQueryString = params.toString();
+    let hasUserInteracted = false;
+    let rowIdSequence = 0;
+
+    function parseList(value) {
+      return value ? value.split("_").map(item => item.trim()) : [];
+    }
+
+    function isValidCalendarDate(year, month, day) {
+      const date = new Date(year, month - 1, day);
+      return date.getFullYear() === year
+        && date.getMonth() === month - 1
+        && date.getDate() === day;
+    }
+
+    function parseDutchDate(value) {
+      if (!value) {
+        return null;
+      }
+
+      const match = value.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+      if (!match) {
+        return null;
+      }
+
+      const [, dayString, monthString, yearString] = match;
+      const day = Number(dayString);
+      const month = Number(monthString);
+      const year = Number(yearString);
+      if (!isValidCalendarDate(year, month, day)) {
+        return null;
+      }
+      return `${yearString}-${monthString}-${dayString}`;
+    }
+
+    function formatDutchDate(value) {
+      if (!value) {
+        return "";
+      }
+
+      const [year, month, day] = value.split("-");
+      return `${day}-${month}-${year}`;
+    }
+
+    function createRow(values = {}) {
+      const row = rowTemplate.content.querySelector("tr").cloneNode(true);
+      const rowId = rowIdSequence++;
+      const labelCell = row.querySelector(".medicine-label");
+      const dailyInput = row.querySelector(".daily");
+      const boxInput = row.querySelector(".box");
+      const stockInput = row.querySelector(".stock");
+      const dailyLabel = row.querySelector(".daily-label");
+      const boxLabel = row.querySelector(".box-label");
+      const stockLabel = row.querySelector(".stock-label");
+      const rowName = `Medicine ${rowsContainer.querySelectorAll("tr").length + 1}`;
+
+      labelCell.id = `medicine-${rowId}`;
+      labelCell.textContent = rowName;
+      dailyLabel.id = `daily-label-${rowId}`;
+      boxLabel.id = `box-label-${rowId}`;
+      stockLabel.id = `stock-label-${rowId}`;
+      dailyInput.id = `daily-${rowId}`;
+      boxInput.id = `box-${rowId}`;
+      stockInput.id = `stock-${rowId}`;
+      dailyInput.setAttribute("aria-labelledby", `${labelCell.id} ${dailyLabel.id}`);
+      boxInput.setAttribute("aria-labelledby", `${labelCell.id} ${boxLabel.id}`);
+      stockInput.setAttribute("aria-labelledby", `${labelCell.id} ${stockLabel.id}`);
+      dailyInput.value = values.daily ?? "";
+      boxInput.value = values.box ?? "";
+      stockInput.value = values.stock ?? "";
+      rowsContainer.appendChild(row);
+    }
+
+    function initializeRows() {
+      const daily = parseList(params.get("aantal"));
+      const boxes = parseList(params.get("dozen"));
+      const stock = parseList(params.get("voorraad"));
+      const targetDate = parseDutchDate(params.get("datum"));
+      const buffer = params.get("buffer");
+      const rowCount = Math.max(daily.length, boxes.length, stock.length, 1);
+
+      targetDateInput.value = targetDate || "";
+      bufferInput.value = buffer !== null ? buffer : 14;
+
+      for (let index = 0; index < rowCount; index += 1) {
+        createRow({
+          daily: daily[index] || "",
+          box: boxes[index] || "",
+          stock: stock[index] || ""
+        });
+      }
+    }
+
+    function getRows() {
+      return Array.from(rowsContainer.querySelectorAll("tr"));
+    }
+
+    function startOfDay(date) {
+      return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    }
+
+    function plusDays(date, days) {
+      const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate() + days));
+      return new Date(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate());
+    }
+
+    function formatDate(date) {
+      return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(date);
+    }
+
+    function parseInputDate(value) {
+      if (!value) {
+        return null;
+      }
+
+      const [year, month, day] = value.split("-").map(Number);
+      if (!isValidCalendarDate(year, month, day)) {
+        return null;
+      }
+      return new Date(year, month - 1, day);
+    }
+
+    function dayDifference(startDate, endDate) {
+      const startUtc = Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+      const endUtc = Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+      return Math.round((endUtc - startUtc) / 86400000);
+    }
+
+    function formatNumber(value) {
+      return Number.isFinite(value)
+        ? new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value)
+        : "—";
+    }
+
+    function getEffectiveBufferDays() {
+      const rawValue = bufferInput.value.trim();
+      const value = Number(rawValue);
+      return Number.isFinite(value) && value >= 0 && Number.isInteger(value) ? value : 14;
+    }
+
+    function pluralize(value, unit) {
+      return `${value} ${unit}${value === 1 ? "" : "s"}`;
+    }
+
+    function updateSummary(metrics, options = {}) {
+      const cards = [
+        {
+          label: "Medicines tracked",
+          value: metrics.medicineCount
+        },
+        {
+          label: "Days until target",
+          value: metrics.daysUntilTarget === null
+            ? "—"
+            : metrics.daysUntilTarget >= 0
+              ? metrics.daysUntilTarget
+              : `Passed by ${Math.abs(metrics.daysUntilTarget)}`
+        },
+        {
+          label: "Boxes to order",
+          value: metrics.boxesToOrder
+        },
+        {
+          label: "Medicines ready",
+          value: `${metrics.readyCount}/${metrics.medicineCount}`
+        }
+      ];
+
+      summary.replaceChildren();
+      cards.forEach(card => {
+        const metric = document.createElement("div");
+        const label = document.createElement("span");
+        const value = document.createElement("strong");
+
+        metric.className = "metric";
+        label.textContent = card.label;
+        value.textContent = String(card.value);
+        metric.append(label, value);
+        summary.appendChild(metric);
+      });
+      summaryAnnouncement.textContent = `${pluralize(metrics.medicineCount, "medicine")} tracked. ${options.targetStatusText || "Target date not set."} ${metrics.boxesToOrder} ${metrics.boxesToOrder === 1 ? "box" : "boxes"} to order. ${pluralize(metrics.readyCount, "medicine")} ready.`;
+    }
+
+    function updateUrl(rows) {
+      if (!hasUserInteracted && !initialQueryString) {
+        return;
+      }
+
+      const nextParams = new URLSearchParams();
+      if (targetDateInput.value && parseInputDate(targetDateInput.value)) {
+        nextParams.set("datum", formatDutchDate(targetDateInput.value));
+      }
+
+      const effectiveBufferDays = getEffectiveBufferDays();
+      if (effectiveBufferDays !== 14) {
+        nextParams.set("buffer", String(effectiveBufferDays));
+      }
+
+      const daily = [];
+      const boxes = [];
+      const stock = [];
+      let hasAnyMedicineValue = false;
+
+      rows.forEach(row => {
+        const dailyValue = row.querySelector(".daily").value;
+        const boxValue = row.querySelector(".box").value;
+        const stockValue = row.querySelector(".stock").value;
+
+        daily.push(dailyValue);
+        boxes.push(boxValue);
+        stock.push(stockValue);
+        hasAnyMedicineValue ||= dailyValue !== "" || boxValue !== "" || stockValue !== "";
+      });
+
+      if (hasAnyMedicineValue) {
+        nextParams.set("aantal", daily.join("_"));
+        nextParams.set("dozen", boxes.join("_"));
+        nextParams.set("voorraad", stock.join("_"));
+      }
+
+      const queryString = nextParams.toString();
+      const nextUrl = queryString
+        ? `${window.location.pathname}?${queryString}`
+        : window.location.pathname;
+      window.history.replaceState({}, "", nextUrl);
+    }
+
+    function recalculate() {
+      const rows = getRows();
+      const bufferDays = getEffectiveBufferDays();
+      const today = startOfDay(new Date());
+      const parsedTargetDate = targetDateInput.value ? parseInputDate(targetDateInput.value) : null;
+      const invalidTargetDate = targetDateInput.validity.badInput || (Boolean(targetDateInput.value) && !parsedTargetDate);
+      const missingTargetDate = !targetDateInput.value && !invalidTargetDate;
+      const rawBufferValue = bufferInput.value.trim();
+      const invalidBuffer = rawBufferValue !== "" && (!Number.isFinite(Number(rawBufferValue)) || Number(rawBufferValue) < 0 || !Number.isInteger(Number(rawBufferValue)));
+      const targetDate = parsedTargetDate ? startOfDay(parsedTargetDate) : null;
+      const daysUntilTarget = targetDate ? dayDifference(today, targetDate) : null;
+      const planningDays = Math.max(daysUntilTarget ?? 0, 0);
+      const metrics = {
+        medicineCount: rows.length,
+        daysUntilTarget,
+        boxesToOrder: 0,
+        readyCount: 0
+      };
+
+      targetDateStatus.textContent = invalidTargetDate
+        ? "Enter a valid calendar date for planning."
+        : missingTargetDate
+          ? "Choose a target date to start planning."
+          : "";
+      targetDateInput.setAttribute("aria-invalid", invalidTargetDate ? "true" : "false");
+      bufferStatus.textContent = invalidBuffer
+        ? "Enter a non-negative whole number of buffer days."
+        : rawBufferValue === ""
+          ? "Buffer is using the default of 14 days."
+          : "";
+      bufferInput.setAttribute("aria-invalid", invalidBuffer ? "true" : "false");
+
+      rows.forEach((row, index) => {
+        const labelCell = row.querySelector(".medicine-label");
+        const healthCell = row.querySelector(".health");
+        const planCell = row.querySelector(".plan");
+        const dailyInput = row.querySelector(".daily");
+        const boxInput = row.querySelector(".box");
+        const stockInput = row.querySelector(".stock");
+        const daily = Number(dailyInput.value);
+        const boxSize = Number(boxInput.value);
+        const stock = Number(stockInput.value);
+        const bufferPills = daily > 0 ? daily * bufferDays : 0;
+        const rowName = `Medicine ${index + 1}`;
+        const dailyInvalid = !dailyInput.validity.valid;
+        const boxInvalid = !boxInput.validity.valid;
+        const stockInvalid = !stockInput.validity.valid;
+
+        labelCell.textContent = rowName;
+        dailyInput.setAttribute("aria-invalid", dailyInvalid ? "true" : "false");
+        boxInput.setAttribute("aria-invalid", boxInvalid ? "true" : "false");
+        stockInput.setAttribute("aria-invalid", stockInvalid ? "true" : "false");
+
+        if (dailyInvalid || boxInvalid || stockInvalid) {
+          const statusBadge = document.createElement("span");
+          const statusDetail = document.createElement("div");
+          const planLine = document.createElement("div");
+
+          healthCell.replaceChildren();
+          statusBadge.className = "status warn";
+          statusBadge.textContent = "Needs input";
+          statusDetail.className = "muted";
+          statusDetail.textContent = "Enter daily pills, box size, and stock.";
+          healthCell.append(statusBadge, statusDetail);
+
+          planCell.replaceChildren();
+          planLine.className = "muted";
+          planLine.textContent = "Planning updates automatically when the row is complete.";
+          planCell.appendChild(planLine);
+          return;
+        }
+
+        if (invalidTargetDate || missingTargetDate) {
+          const statusBadge = document.createElement("span");
+          const statusDetail = document.createElement("div");
+          const planLine = document.createElement("div");
+
+          healthCell.replaceChildren();
+          statusBadge.className = "status warn";
+          statusBadge.textContent = invalidTargetDate ? "Invalid target date" : "Add target date";
+          statusDetail.textContent = invalidTargetDate
+            ? "Enter a valid calendar date to calculate planning advice."
+            : "Choose a target date to calculate planning advice.";
+          healthCell.append(statusBadge, statusDetail);
+
+          planCell.replaceChildren();
+          planLine.className = "muted";
+          planLine.textContent = invalidTargetDate
+            ? "Planning is paused until the target date is valid."
+            : "Planning is paused until a target date is provided.";
+          planCell.appendChild(planLine);
+          return;
+        }
+
+        const daysLeft = daily === 0 ? Infinity : stock / daily;
+        const runOutDate = daily === 0 ? null : plusDays(today, Math.ceil(daysLeft));
+        const pillsNeededByTarget = daily * planningDays;
+        const targetRequirement = pillsNeededByTarget + bufferPills;
+        const shortage = Math.max(0, targetRequirement - stock);
+        const boxesToOrder = shortage > 0 ? Math.ceil(shortage / boxSize) : 0;
+        const projectedStock = stock + (boxesToOrder * boxSize);
+        const projectedRemaining = projectedStock - pillsNeededByTarget;
+        const bufferOffsetDays = daily === 0 ? Infinity : Math.floor((stock - bufferPills) / daily);
+        const safeUntilBufferDate = daily === 0 ? null : plusDays(today, Math.max(0, bufferOffsetDays));
+        const immediateShortage = Math.max(0, bufferPills - stock);
+        const immediateBoxesToOrder = immediateShortage > 0 ? Math.ceil(immediateShortage / boxSize) : 0;
+        const hasCoverage = daily === 0
+          ? true
+          : daysUntilTarget !== null && daysUntilTarget >= 0 && projectedRemaining >= bufferPills;
+        const belowBufferNow = daily > 0 && stock <= bufferPills;
+        const targetInPast = daysUntilTarget !== null && daysUntilTarget < 0;
+        let statusClass = "ok";
+        let statusText = "Ready";
+        let detailText = daily === 0
+          ? "No pills are consumed each day, so current stock does not run down."
+          : `Runs out around ${formatDate(runOutDate)} after about ${formatNumber(daysLeft)} days.`;
+        let orderCount = boxesToOrder;
+        let orderSuffix = `${boxesToOrder === 1 ? "box" : "boxes"} to order`;
+        let planLines = [
+          `Need ${formatNumber(pillsNeededByTarget)} pills by ${targetDate ? formatDate(targetDate) : "the target date"} and ${formatNumber(bufferPills)} extra for buffer.`,
+          `Projected stock on target date: ${formatNumber(projectedRemaining)} pills.`
+        ];
+
+        if (targetInPast) {
+          statusClass = "urgent";
+          statusText = "Target passed";
+          detailText = `Target date ${formatDate(targetDate)} was ${pluralize(Math.abs(daysUntilTarget), "day")} ago.${belowBufferNow ? ` Current stock is already inside the ${pluralize(bufferDays, "day")} buffer.` : ""}`;
+          orderCount = immediateBoxesToOrder;
+          orderSuffix = `${immediateBoxesToOrder === 1 ? "box" : "boxes"} to order now`;
+          planLines = [
+            "Target-date forecasting is disabled because the selected date is in the past.",
+            `Current stock: ${formatNumber(stock)} pills, buffer need: ${formatNumber(bufferPills)} pills.`
+          ];
+        }
+
+        if (!targetInPast && belowBufferNow) {
+          statusClass = "urgent";
+          statusText = "Below buffer";
+          detailText = `Current stock is already inside the ${pluralize(bufferDays, "day")} buffer.`;
+        } else if (!targetInPast && shortage > 0) {
+          statusClass = "warn";
+          statusText = "Order needed";
+          detailText = bufferOffsetDays < 0
+            ? "Stock has already dropped into the buffer."
+            : `Stock drops into the buffer around ${formatDate(safeUntilBufferDate)}.`;
+        }
+
+        if (hasCoverage) {
+          metrics.readyCount += 1;
+        }
+        if (targetInPast) {
+          metrics.boxesToOrder += immediateBoxesToOrder;
+        } else {
+          metrics.boxesToOrder += boxesToOrder;
+        }
+
+        const statusBadge = document.createElement("span");
+        const statusDetail = document.createElement("div");
+        const orderLine = document.createElement("div");
+        const orderValue = document.createElement("strong");
+
+        healthCell.replaceChildren();
+        statusBadge.className = `status ${statusClass}`;
+        statusBadge.textContent = statusText;
+        statusDetail.textContent = detailText;
+        healthCell.append(statusBadge, statusDetail);
+
+        planCell.replaceChildren();
+        orderValue.textContent = String(orderCount);
+        orderLine.append(orderValue, document.createTextNode(` ${orderSuffix}`));
+        planCell.appendChild(orderLine);
+        planLines.forEach(line => {
+          const detailLine = document.createElement("div");
+          detailLine.className = "muted";
+          detailLine.textContent = line;
+          planCell.appendChild(detailLine);
+        });
+      });
+
+      const targetStatusText = invalidTargetDate
+        ? "Target date is invalid."
+        : missingTargetDate
+          ? "Target date not set."
+          : daysUntilTarget < 0
+            ? `Target date passed by ${pluralize(Math.abs(daysUntilTarget), "day")}.`
+            : `Target date in ${pluralize(daysUntilTarget, "day")}.`;
+
+      updateSummary(metrics, { targetStatusText });
+      updateUrl(rows);
+    }
+
+    rowsContainer.addEventListener("input", () => {
+      hasUserInteracted = true;
+      recalculate();
+    });
+    rowsContainer.addEventListener("click", event => {
+      if (event.target.classList.contains("remove-row")) {
+        hasUserInteracted = true;
+        if (getRows().length > 1) {
+          event.target.closest("tr").remove();
+        } else {
+          event.target.closest("tr").querySelectorAll("input").forEach(input => {
+            input.value = "";
+          });
+        }
+        recalculate();
+      }
+    });
+
+    targetDateInput.addEventListener("input", () => {
+      hasUserInteracted = true;
+      recalculate();
+    });
+    bufferInput.addEventListener("input", () => {
+      hasUserInteracted = true;
+      recalculate();
+    });
+    addRowButton.addEventListener("click", () => {
+      hasUserInteracted = true;
+      createRow();
+      recalculate();
+    });
+
+    initializeRows();
+    recalculate();
+  </script>
+</body>
+</html>
