@@ -450,7 +450,7 @@
         metric.append(label, value);
         summary.appendChild(metric);
       });
-      summaryAnnouncement.textContent = `${metrics.medicineCount} medicines tracked. ${metrics.boxesToOrder} boxes to order. ${metrics.readyCount} medicines ready.`;
+      summaryAnnouncement.textContent = `${pluralize(metrics.medicineCount, "medicine")} tracked. ${metrics.boxesToOrder} ${metrics.boxesToOrder === 1 ? "box" : "boxes"} to order. ${pluralize(metrics.readyCount, "medicine")} ready.`;
     }
 
     function updateUrl(rows) {
@@ -531,21 +531,23 @@
         let detailText = daily === 0
           ? "No pills are consumed each day, so current stock does not run down."
           : `Runs out around ${formatDate(runOutDate)} after about ${formatNumber(daysLeft)} days.`;
-        let planMessage = `
-          <div><strong>${boxesToOrder}</strong> ${boxesToOrder === 1 ? "box" : "boxes"} to order</div>
-          <div class="muted">Need ${formatNumber(pillsNeededByTarget)} pills by ${targetDate ? formatDate(targetDate) : "the target date"} and ${formatNumber(bufferPills)} extra for buffer.</div>
-          <div class="muted">Projected stock on target date: ${formatNumber(projectedRemaining)} pills.</div>
-        `;
+        let orderCount = boxesToOrder;
+        let orderSuffix = `${boxesToOrder === 1 ? "box" : "boxes"} to order`;
+        let planLines = [
+          `Need ${formatNumber(pillsNeededByTarget)} pills by ${targetDate ? formatDate(targetDate) : "the target date"} and ${formatNumber(bufferPills)} extra for buffer.`,
+          `Projected stock on target date: ${formatNumber(projectedRemaining)} pills.`
+        ];
 
         if (targetInPast) {
           statusClass = "urgent";
           statusText = "Target passed";
           detailText = `Target date ${formatDate(targetDate)} was ${pluralize(Math.abs(daysUntilTarget), "day")} ago.${belowBufferNow ? ` Current stock is already inside the ${pluralize(bufferDays, "day")} buffer.` : ""}`;
-          planMessage = `
-            <div><strong>${immediateBoxesToOrder}</strong> ${immediateBoxesToOrder === 1 ? "box" : "boxes"} to order now</div>
-            <div class="muted">Target-date forecasting is disabled because the selected date is in the past.</div>
-            <div class="muted">Current stock: ${formatNumber(stock)} pills, buffer need: ${formatNumber(bufferPills)} pills.</div>
-          `;
+          orderCount = immediateBoxesToOrder;
+          orderSuffix = `${immediateBoxesToOrder === 1 ? "box" : "boxes"} to order now`;
+          planLines = [
+            "Target-date forecasting is disabled because the selected date is in the past.",
+            `Current stock: ${formatNumber(stock)} pills, buffer need: ${formatNumber(bufferPills)} pills.`
+          ];
         }
 
         if (!targetInPast && belowBufferNow) {
@@ -569,12 +571,27 @@
           metrics.boxesToOrder += boxesToOrder;
         }
 
-        healthCell.innerHTML = `
-          <span class="status ${statusClass}">${statusText}</span>
-          <div>${detailText}</div>
-        `;
+        const statusBadge = document.createElement("span");
+        const statusDetail = document.createElement("div");
+        const orderLine = document.createElement("div");
+        const orderValue = document.createElement("strong");
 
-        planCell.innerHTML = planMessage;
+        healthCell.replaceChildren();
+        statusBadge.className = `status ${statusClass}`;
+        statusBadge.textContent = statusText;
+        statusDetail.textContent = detailText;
+        healthCell.append(statusBadge, statusDetail);
+
+        planCell.replaceChildren();
+        orderValue.textContent = String(orderCount);
+        orderLine.append(orderValue, document.createTextNode(` ${orderSuffix}`));
+        planCell.appendChild(orderLine);
+        planLines.forEach(line => {
+          const detailLine = document.createElement("div");
+          detailLine.className = "muted";
+          detailLine.textContent = line;
+          planCell.appendChild(detailLine);
+        });
       });
 
       updateSummary(metrics);
