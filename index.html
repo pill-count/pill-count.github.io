@@ -482,21 +482,32 @@
         nextParams.set("datum", formatDutchDate(targetDateInput.value));
       }
 
-      nextParams.set("buffer", String(getEffectiveBufferDays()));
+      const effectiveBufferDays = getEffectiveBufferDays();
+      if (effectiveBufferDays !== 14) {
+        nextParams.set("buffer", String(effectiveBufferDays));
+      }
 
       const daily = [];
       const boxes = [];
       const stock = [];
+      let hasAnyMedicineValue = false;
 
       rows.forEach(row => {
-        daily.push(row.querySelector(".daily").value);
-        boxes.push(row.querySelector(".box").value);
-        stock.push(row.querySelector(".stock").value);
+        const dailyValue = row.querySelector(".daily").value;
+        const boxValue = row.querySelector(".box").value;
+        const stockValue = row.querySelector(".stock").value;
+
+        daily.push(dailyValue);
+        boxes.push(boxValue);
+        stock.push(stockValue);
+        hasAnyMedicineValue ||= dailyValue !== "" || boxValue !== "" || stockValue !== "";
       });
 
-      nextParams.set("aantal", daily.join("_"));
-      nextParams.set("dozen", boxes.join("_"));
-      nextParams.set("voorraad", stock.join("_"));
+      if (hasAnyMedicineValue) {
+        nextParams.set("aantal", daily.join("_"));
+        nextParams.set("dozen", boxes.join("_"));
+        nextParams.set("voorraad", stock.join("_"));
+      }
 
       const queryString = nextParams.toString();
       const nextUrl = queryString
