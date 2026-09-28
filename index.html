@@ -254,9 +254,9 @@
   <template id="medicine-row-template">
     <tr>
       <th class="medicine-label" data-label="Medicine" scope="row"></th>
-      <td data-label="Daily pills"><input class="daily" type="number" min="0" step="0.5"></td>
-      <td data-label="Box size"><input class="box" type="number" min="1" step="1"></td>
-      <td data-label="Current stock"><input class="stock" type="number" min="0" step="1"></td>
+      <td data-label="Daily pills"><input class="daily" type="number" min="0" step="0.5" aria-label="Daily pills"></td>
+      <td data-label="Box size"><input class="box" type="number" min="1" step="1" aria-label="Box size"></td>
+      <td data-label="Current stock"><input class="stock" type="number" min="0" step="1" aria-label="Current stock"></td>
       <td class="health" data-label="Stock health" aria-live="polite" aria-atomic="true"></td>
       <td class="plan" data-label="Planning" aria-live="polite" aria-atomic="true"></td>
       <td data-label="Remove"><button class="secondary remove-row" type="button">Remove</button></td>
@@ -464,27 +464,31 @@
         row.querySelector(".box").setAttribute("aria-label", `${rowName} box size`);
         row.querySelector(".stock").setAttribute("aria-label", `${rowName} current stock`);
 
-        if (!daily || !boxSize || stock < 0) {
+        if (Number.isNaN(daily) || daily < 0 || Number.isNaN(boxSize) || boxSize <= 0 || Number.isNaN(stock) || stock < 0) {
           healthCell.innerHTML = `<span class="status warn">Needs input</span><div class="muted">Enter daily pills, box size, and stock.</div>`;
           planCell.innerHTML = `<div class="muted">Planning updates automatically when the row is complete.</div>`;
           return;
         }
 
-        const daysLeft = stock / daily;
-        const runOutDate = plusDays(today, Math.floor(daysLeft));
+        const daysLeft = daily === 0 ? Infinity : stock / daily;
+        const runOutDate = daily === 0 ? null : plusDays(today, Math.floor(daysLeft));
         const pillsNeededByTarget = daily * planningDays;
         const targetRequirement = pillsNeededByTarget + bufferPills;
         const shortage = Math.max(0, targetRequirement - stock);
         const boxesToOrder = shortage > 0 ? Math.ceil(shortage / boxSize) : 0;
         const projectedStock = stock + (boxesToOrder * boxSize);
         const projectedRemaining = projectedStock - pillsNeededByTarget;
-        const safeUntilBufferDate = plusDays(today, Math.max(0, Math.floor((stock - bufferPills) / daily)));
+        const safeUntilBufferDate = daily === 0 ? null : plusDays(today, Math.max(0, Math.floor((stock - bufferPills) / daily)));
+        const immediateShortage = Math.max(0, bufferPills - stock);
+        const immediateBoxesToOrder = immediateShortage > 0 ? Math.ceil(immediateShortage / boxSize) : 0;
         const hasCoverage = daysUntilTarget !== null && daysUntilTarget >= 0 && projectedRemaining >= bufferPills;
-        const belowBufferNow = stock <= bufferPills;
+        const belowBufferNow = daily > 0 && stock <= bufferPills;
         const targetInPast = daysUntilTarget !== null && daysUntilTarget < 0;
         let statusClass = "ok";
         let statusText = "Ready";
-        let detailText = `Runs out around ${formatDate(runOutDate)} after about ${formatNumber(daysLeft)} days.`;
+        let detailText = daily === 0
+          ? "No pills are consumed each day, so current stock does not run down."
+          : `Runs out around ${formatDate(runOutDate)} after about ${formatNumber(daysLeft)} days.`;
         let planMessage = `
           <div><strong>${boxesToOrder}</strong> ${boxesToOrder === 1 ? "box" : "boxes"} to order</div>
           <div class="muted">Need ${formatNumber(pillsNeededByTarget)} pills by ${targetDate ? formatDate(targetDate) : "the target date"} and ${formatNumber(bufferPills)} extra for buffer.</div>
@@ -494,11 +498,11 @@
         if (targetInPast) {
           statusClass = "urgent";
           statusText = "Target passed";
-          detailText = `Target date ${formatDate(targetDate)} was ${pluralize(Math.abs(daysUntilTarget), "day")} ago.`;
+          detailText = `Target date ${formatDate(targetDate)} was ${pluralize(Math.abs(daysUntilTarget), "day")} ago.${belowBufferNow ? ` Current stock is already inside the ${pluralize(bufferDays, "day")} buffer.` : ""}`;
           planMessage = `
-            <div><strong>0</strong> boxes to order</div>
-            <div class="muted">Select a future target date to calculate new order advice.</div>
-            <div class="muted">Current stock: ${formatNumber(stock)} pills.</div>
+            <div><strong>${immediateBoxesToOrder}</strong> ${immediateBoxesToOrder === 1 ? "box" : "boxes"} to order now</div>
+            <div class="muted">Target-date forecasting is disabled because the selected date is in the past.</div>
+            <div class="muted">Current stock: ${formatNumber(stock)} pills, buffer need: ${formatNumber(bufferPills)} pills.</div>
           `;
         }
 
@@ -515,7 +519,9 @@
         if (hasCoverage) {
           metrics.readyCount += 1;
         }
-        if (!targetInPast) {
+        if (targetInPast) {
+          metrics.boxesToOrder += immediateBoxesToOrder;
+        } else {
           metrics.boxesToOrder += boxesToOrder;
         }
 
