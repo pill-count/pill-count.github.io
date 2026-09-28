@@ -483,7 +483,8 @@
       const rows = getRows();
       const bufferDays = getEffectiveBufferDays();
       const today = startOfDay(new Date());
-      const targetDate = targetDateInput.value ? startOfDay(parseInputDate(targetDateInput.value)) : null;
+      const parsedTargetDate = targetDateInput.value ? parseInputDate(targetDateInput.value) : null;
+      const targetDate = parsedTargetDate ? startOfDay(parsedTargetDate) : null;
       const daysUntilTarget = targetDate ? dayDifference(today, targetDate) : null;
       const planningDays = Math.max(daysUntilTarget ?? 0, 0);
       const metrics = {
@@ -554,7 +555,9 @@
         } else if (!targetInPast && shortage > 0) {
           statusClass = "warn";
           statusText = "Order needed";
-          detailText = `Stock drops into the buffer around ${formatDate(safeUntilBufferDate)}.`;
+          detailText = safeUntilBufferDate < today
+            ? "Stock has already dropped into the buffer."
+            : `Stock drops into the buffer around ${formatDate(safeUntilBufferDate)}.`;
         }
 
         if (hasCoverage) {
