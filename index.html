@@ -216,7 +216,7 @@
 
     <section class="panel">
       <h2>Overview</h2>
-      <div id="summary" class="summary"></div>
+      <div id="summary" class="summary" role="status" aria-live="polite" aria-atomic="true"></div>
     </section>
 
     <section class="panel">
@@ -244,8 +244,8 @@
       <td data-label="Daily pills"><input class="daily" type="number" min="0" step="0.5"></td>
       <td data-label="Box size"><input class="box" type="number" min="1" step="1"></td>
       <td data-label="Current stock"><input class="stock" type="number" min="0" step="1"></td>
-      <td class="health" data-label="Stock health"></td>
-      <td class="plan" data-label="Planning"></td>
+      <td class="health" data-label="Stock health" aria-live="polite" aria-atomic="true"></td>
+      <td class="plan" data-label="Planning" aria-live="polite" aria-atomic="true"></td>
       <td data-label="Remove"><button class="secondary remove-row" type="button">Remove</button></td>
     </tr>
   </template>
@@ -350,7 +350,11 @@
         },
         {
           label: "Days until target",
-          value: metrics.daysUntilTarget >= 0 ? metrics.daysUntilTarget : "—"
+          value: metrics.daysUntilTarget === null
+            ? "—"
+            : metrics.daysUntilTarget >= 0
+              ? metrics.daysUntilTarget
+              : `Passed by ${Math.abs(metrics.daysUntilTarget)}`
         },
         {
           label: "Boxes to order",
@@ -403,7 +407,8 @@
       const bufferDays = Math.max(Number(bufferInput.value) || 0, 0);
       const today = startOfDay(new Date());
       const targetDate = targetDateInput.value ? startOfDay(new Date(`${targetDateInput.value}T00:00:00`)) : null;
-      const daysUntilTarget = targetDate ? Math.max(0, Math.round((targetDate - today) / 86400000)) : 0;
+      const daysUntilTarget = targetDate ? Math.round((targetDate - today) / 86400000) : null;
+      const planningDays = Math.max(daysUntilTarget ?? 0, 0);
       const metrics = {
         medicineCount: rows.length,
         daysUntilTarget,
@@ -430,20 +435,38 @@
 
         const daysLeft = stock / daily;
         const runOutDate = plusDays(today, Math.floor(daysLeft));
-        const pillsNeededByTarget = daily * daysUntilTarget;
+        const pillsNeededByTarget = daily * planningDays;
         const targetRequirement = pillsNeededByTarget + bufferPills;
         const shortage = Math.max(0, targetRequirement - stock);
         const boxesToOrder = shortage > 0 ? Math.ceil(shortage / boxSize) : 0;
         const projectedStock = stock + (boxesToOrder * boxSize);
         const projectedRemaining = projectedStock - pillsNeededByTarget;
         const safeUntilBufferDate = plusDays(today, Math.max(0, Math.floor((stock - bufferPills) / daily)));
-        const hasCoverage = projectedRemaining >= bufferPills;
+        const hasCoverage = daysUntilTarget !== null && daysUntilTarget >= 0 && projectedRemaining >= bufferPills;
         const belowBufferNow = stock <= bufferPills;
         let statusClass = "ok";
         let statusText = "Ready";
         let detailText = `Runs out around ${formatDate(runOutDate)} after about ${formatNumber(daysLeft)} days.`;
+        let planMessage = `
+          <div><strong>${boxesToOrder}</strong> ${boxesToOrder === 1 ? "box" : "boxes"} to order</div>
+          <div class="muted">Need ${formatNumber(pillsNeededByTarget)} pills by ${targetDate ? formatDate(targetDate) : "the target date"} and ${formatNumber(bufferPills)} extra for buffer.</div>
+          <div class="muted">Projected stock on target date: ${formatNumber(projectedRemaining)} pills.</div>
+        `;
 
-        if (belowBufferNow) {
+        if (targetDate && daysUntilTarget < 0) {
+          statusClass = "urgent";
+          statusText = "Target passed";
+          detailText = `Target date ${formatDate(targetDate)} was ${pluralize(Math.abs(daysUntilTarget), "day")} ago.`;
+          planMessage = `
+            <div><strong>0</strong> boxes to order</div>
+            <div class="muted">Select a future target date to calculate new order advice.</div>
+            <div class="muted">Current stock: ${formatNumber(stock)} pills.</div>
+          `;
+        }
+
+        if (daysUntilTarget !== null && daysUntilTarget < 0) {
+          metrics.boxesToOrder += 0;
+        } else if (belowBufferNow) {
           statusClass = "urgent";
           statusText = "Below buffer";
           detailText = `Current stock is already inside the ${pluralize(bufferDays, "day")} buffer.`;
@@ -456,18 +479,16 @@
         if (hasCoverage) {
           metrics.readyCount += 1;
         }
-        metrics.boxesToOrder += boxesToOrder;
+        if (!(targetDate && daysUntilTarget < 0)) {
+          metrics.boxesToOrder += boxesToOrder;
+        }
 
         healthCell.innerHTML = `
           <span class="status ${statusClass}">${statusText}</span>
           <div>${detailText}</div>
         `;
 
-        planCell.innerHTML = `
-          <div><strong>${boxesToOrder}</strong> ${boxesToOrder === 1 ? "box" : "boxes"} to order</div>
-          <div class="muted">Need ${formatNumber(pillsNeededByTarget)} pills by ${targetDate ? formatDate(targetDate) : "the target date"} and ${formatNumber(bufferPills)} extra for buffer.</div>
-          <div class="muted">Projected stock on target date: ${formatNumber(projectedRemaining)} pills.</div>
-        `;
+        planCell.innerHTML = planMessage;
       });
 
       updateSummary(metrics);
